@@ -4,7 +4,7 @@ import bcrypt from 'bcryptjs';
 
 dotenv.config();
 
-const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/aayat';
+const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/ayat';
 
 const adminSchema = new mongoose.Schema({
   email: { type: String, required: true, unique: true },

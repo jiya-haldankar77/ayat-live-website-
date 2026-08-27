@@ -1,15 +1,4 @@
-import {
-  propertiesApi,
-  bookingsApi,
-  inquiriesApi,
-  testimonialsApi,
-  faqsApi,
-  teamApi,
-  settingsApi,
-  dashboardApi,
-  categoriesApi,
-  amenitiesApi,
-} from './api';
+import { createClient } from '@supabase/supabase-js';
 import type {
   Property,
   PropertyWithRelations,
@@ -21,188 +10,479 @@ import type {
   Testimonial,
   Faq,
   TeamMember,
+  Setting,
+  Notification,
 } from '@/types';
 
-// Re-export API functions
-export {
-  propertiesApi,
-  bookingsApi,
-  inquiriesApi,
-  testimonialsApi,
-  faqsApi,
-  teamApi,
-  settingsApi,
-  dashboardApi,
-  categoriesApi,
-  amenitiesApi,
-};
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-// Mock Supabase client/object for compilation compatibility if imported elsewhere
-export const supabase = {
-  auth: {
-    getSession: async () => ({ data: { session: null }, error: null }),
-    onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } }),
-  },
-  storage: {
-    from: () => ({
-      upload: async () => ({ data: null, error: new Error('Not implemented') }),
-      getPublicUrl: () => ({ data: { publicUrl: '' } }),
-    }),
-  },
-};
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: { persistSession: true, autoRefreshToken: true },
+});
 
-// Legacy function names for compatibility with public routes
-export const fetchProperties = async (filters?: {
+// ---------- Properties ----------
+export async function fetchProperties(filters?: {
   type?: string;
   region?: string;
   minPrice?: number;
   maxPrice?: number;
   beds?: string;
   search?: string;
-}): Promise<Property[]> => {
-  let data = await propertiesApi.getPublished();
-  if (filters) {
-    if (filters.type && filters.type !== 'all') {
-      data = data.filter((p: Property) => p.property_type === filters.type);
-    }
-    if (filters.region && filters.region !== 'all') {
-      data = data.filter((p: Property) => p.region === filters.region);
-    }
-    if (filters.beds && filters.beds !== 'all') {
-      data = data.filter((p: Property) => (p.bedrooms ?? 0) >= Number(filters.beds));
-    }
-    if (filters.minPrice !== undefined) {
-      const minVal = filters.minPrice;
-      data = data.filter((p: Property) => p.price_value >= minVal);
-    }
-    if (filters.maxPrice !== undefined) {
-      const maxVal = filters.maxPrice;
-      data = data.filter((p: Property) => p.price_value < maxVal);
-    }
-    if (filters.search) {
-      const s = filters.search.toLowerCase();
-      data = data.filter((p: Property) =>
-        p.title.toLowerCase().includes(s) ||
-        p.location.toLowerCase().includes(s)
-      );
-    }
-  }
-  return data;
-};
+}): Promise<Property[]> {
+  let q = supabase.from('properties').select('*').eq('published', true).order('featured', { ascending: false }).order('created_at', { ascending: false });
+  if (filters?.type && filters.type !== 'all') q = q.eq('property_type', filters.type);
+  if (filters?.region && filters.region !== 'all') q = q.eq('region', filters.region);
+  if (filters?.beds && filters.beds !== 'all') q = q.gte('bedrooms', Number(filters.beds));
+  if (filters?.minPrice) q = q.gte('price_value', filters.minPrice);
+  if (filters?.maxPrice) q = q.lt('price_value', filters.maxPrice);
+  if (filters?.search) q = q.or(`title.ilike.%${filters.search}%,location.ilike.%${filters.search}%`);
+  const { data, error } = await q;
+  if (error) throw error;
+  return data as Property[];
+}
 
-export const fetchAllProperties = (): Promise<Property[]> => propertiesApi.getAll();
-export const createProperty = (data: any): Promise<Property> => propertiesApi.create(data);
-export const updateProperty = (id: string, data: any): Promise<Property> => propertiesApi.update(id, data);
-export const deleteProperty = (id: string): Promise<any> => propertiesApi.delete(id);
+export async function fetchPropertyBySlug(slug: string): Promise<PropertyWithRelations | null> {
+  const { data, error } = await supabase
+    .from('properties')
+    .select('*, category:categories(*)')
+    .eq('slug', slug)
+    .eq('published', true)
+    .maybeSingle();
+  if (error || !data) return null;
+  const property = data as PropertyWithRelations;
 
-export const fetchFeaturedProperties = async (limit = 3): Promise<Property[]> => {
-  const properties = await propertiesApi.getPublished();
-  return properties.filter((p: Property) => p.featured).slice(0, limit);
-};
+  const [amn, fp, docs, vids] = await Promise.all([
+    supabase.from('property_amenities').select('amenity:amenities(*)').eq('property_id', property.id),
+    supabase.from('property_floorplans').select('*').eq('property_id', property.id).order('sort_order'),
+    supabase.from('property_documents').select('*').eq('property_id', property.id),
+    supabase.from('property_videos').select('*').eq('property_id', property.id),
+  ]);
 
-export const fetchPropertyBySlug = async (slug: string): Promise<PropertyWithRelations | null> => {
-  const properties = await propertiesApi.getPublished();
-  const property = properties.find((p: Property) => p.slug === slug);
-  if (!property) return null;
+  property.amenities = (amn.data as unknown as { amenity: Amenity }[] | null)?.map((r) => r.amenity) ?? [];
+  property.floorplans = (fp.data as unknown as PropertyWithRelations['floorplans']) ?? [];
+  property.documents = (docs.data as unknown as PropertyWithRelations['documents']) ?? [];
+  property.videos = (vids.data as unknown as PropertyWithRelations['videos']) ?? [];
+  return property;
+}
+
+export async function fetchFeaturedProperties(limit = 3): Promise<Property[]> {
+  const { data, error } = await supabase
+    .from('properties')
+    .select('*')
+    .eq('published', true)
+    .eq('featured', true)
+    .order('created_at', { ascending: false })
+    .limit(limit);
+  if (error) throw error;
+  return (data as Property[]) ?? [];
+}
+
+// ---------- Projects ----------
+export async function fetchProjects(): Promise<Project[]> {
+  const { data, error } = await supabase.from('projects').select('*').order('featured', { ascending: false }).order('created_at', { ascending: false });
+  if (error) throw error;
+  return data as Project[];
+}
+
+// ---------- Categories & Amenities ----------
+export async function fetchCategories(): Promise<Category[]> {
+  const { data } = await supabase.from('categories').select('*').order('name');
+  return (data as Category[]) ?? [];
+}
+
+export async function fetchAmenities(): Promise<Amenity[]> {
+  const { data } = await supabase.from('amenities').select('*').order('name');
+  return (data as Amenity[]) ?? [];
+}
+
+// ---------- Bookings ----------
+export async function createBooking(input: Omit<Booking, 'id' | 'created_at' | 'status' | 'payment_status'>): Promise<Booking> {
+  const { data, error } = await supabase
+    .from('bookings')
+    .insert({ ...input, status: 'pending', payment_status: 'unpaid' })
+    .select()
+    .single();
+  if (error) throw error;
+  await supabase.from('notifications').insert({ title: 'New booking request', body: `${input.customer_name} booked a visit`, type: 'booking' });
+  return data as Booking;
+}
+
+// ---------- Inquiries ----------
+export async function createInquiry(input: Omit<ContactInquiry, 'id' | 'created_at' | 'status'>): Promise<ContactInquiry> {
+  const { data, error } = await supabase
+    .from('contact_inquiries')
+    .insert({ ...input, status: 'new' })
+    .select()
+    .single();
+  if (error) throw error;
+  await supabase.from('notifications').insert({ title: 'New inquiry received', body: `${input.name} sent a message`, type: 'inquiry' });
+  return data as ContactInquiry;
+}
+
+// ---------- Testimonials ----------
+export async function fetchTestimonials(): Promise<Testimonial[]> {
+  const { data } = await supabase.from('testimonials').select('*').eq('published', true).order('created_at', { ascending: false });
+  return (data as Testimonial[]) ?? [];
+}
+
+// ---------- FAQs ----------
+export async function fetchFaqs(): Promise<Faq[]> {
+  const { data } = await supabase.from('faqs').select('*').eq('published', true).order('sort_order');
+  return (data as Faq[]) ?? [];
+}
+
+// ---------- Team ----------
+export async function fetchTeam(): Promise<TeamMember[]> {
+  const { data } = await supabase.from('team_members').select('*').eq('published', true).order('sort_order');
+  return (data as TeamMember[]) ?? [];
+}
+
+// ---------- Settings ----------
+export async function fetchSettings(): Promise<Record<string, string>> {
+  const { data } = await supabase.from('settings').select('*');
+  const map: Record<string, string> = {};
+  (data as Setting[] | null)?.forEach((s) => (map[s.key] = s.value));
+  return map;
+}
+
+// ---------- Admin helpers ----------
+export async function fetchAdminDashboardStats() {
+  const [props, books, inqs, notifs] = await Promise.all([
+    supabase.from('properties').select('id', { count: 'exact', head: true }),
+    supabase.from('bookings').select('id', { count: 'exact', head: true }),
+    supabase.from('contact_inquiries').select('id', { count: 'exact', head: true }),
+    supabase.from('notifications').select('*').order('created_at', { ascending: false }).limit(5),
+  ]);
   return {
-    ...property,
-    amenities: property.amenities || [],
-    floorplans: property.floorplans || [],
-    documents: property.documents || [],
-    videos: property.videos || [],
+    totalProperties: props.count ?? 0,
+    totalBookings: books.count ?? 0,
+    totalInquiries: inqs.count ?? 0,
+    notifications: (notifs.data as Notification[]) ?? [],
   };
-};
+}
 
-// Bookings
-export const fetchAllBookings = (): Promise<Booking[]> => bookingsApi.getAll();
-export const createBooking = (data: any): Promise<Booking> => bookingsApi.create(data);
-export const updateBooking = (id: string, data: any): Promise<Booking> => bookingsApi.update(id, data);
-export const deleteBooking = (id: string): Promise<any> => bookingsApi.delete(id);
+// ---------- Admin Property CRUD ----------
+export async function createProperty(property: Omit<Property, 'id' | 'created_at'>): Promise<Property> {
+  const { data, error } = await supabase
+    .from('properties')
+    .insert(property)
+    .select()
+    .single();
+  if (error) throw error;
+  await supabase.rpc('log_activity', { 
+    action: 'create', 
+    entity: 'property', 
+    entity_id: data.id, 
+    detail: `Created property: ${data.title}` 
+  });
+  return data as Property;
+}
 
-// Inquiries
-export const fetchAllInquiries = (): Promise<ContactInquiry[]> => inquiriesApi.getAll();
-export const createInquiry = (data: any): Promise<ContactInquiry> => inquiriesApi.create(data);
-export const updateInquiry = (id: string, data: any): Promise<ContactInquiry> => inquiriesApi.update(id, data);
-export const deleteInquiry = (id: string): Promise<any> => inquiriesApi.delete(id);
+export async function updateProperty(id: string, property: Partial<Property>): Promise<Property> {
+  const { data, error } = await supabase
+    .from('properties')
+    .update(property)
+    .eq('id', id)
+    .select()
+    .single();
+  if (error) throw error;
+  await supabase.rpc('log_activity', { 
+    action: 'update', 
+    entity: 'property', 
+    entity_id: id, 
+    detail: `Updated property: ${data.title}` 
+  });
+  return data as Property;
+}
 
-// Testimonials
-export const fetchTestimonials = (): Promise<Testimonial[]> => testimonialsApi.getPublished();
-export const fetchAllTestimonials = (): Promise<Testimonial[]> => testimonialsApi.getAll();
-export const createTestimonial = (data: any): Promise<Testimonial> => testimonialsApi.create(data);
-export const updateTestimonial = (id: string, data: any): Promise<Testimonial> => testimonialsApi.update(id, data);
-export const deleteTestimonial = (id: string): Promise<any> => testimonialsApi.delete(id);
+export async function deleteProperty(id: string): Promise<void> {
+  const { error } = await supabase.from('properties').delete().eq('id', id);
+  if (error) throw error;
+  await supabase.rpc('log_activity', { 
+    action: 'delete', 
+    entity: 'property', 
+    entity_id: id, 
+    detail: 'Deleted property' 
+  });
+}
 
-// FAQs
-export const fetchFaqs = (): Promise<Faq[]> => faqsApi.getPublished();
-export const fetchAllFaqs = (): Promise<Faq[]> => faqsApi.getAll();
-export const createFaq = (data: any): Promise<Faq> => faqsApi.create(data);
-export const updateFaq = (id: string, data: any): Promise<Faq> => faqsApi.update(id, data);
-export const deleteFaq = (id: string): Promise<any> => faqsApi.delete(id);
+export async function fetchAllProperties(): Promise<Property[]> {
+  const { data, error } = await supabase
+    .from('properties')
+    .select('*')
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  return data as Property[];
+}
 
-// Team
-export const fetchTeam = (): Promise<TeamMember[]> => teamApi.getPublished();
-export const fetchAllTeam = (): Promise<TeamMember[]> => teamApi.getAll();
-export const createTeamMember = (data: any): Promise<TeamMember> => teamApi.create(data);
-export const updateTeamMember = (id: string, data: any): Promise<TeamMember> => teamApi.update(id, data);
-export const deleteTeamMember = (id: string): Promise<any> => teamApi.delete(id);
+// ---------- Admin Booking CRUD ----------
+export async function fetchAllBookings(): Promise<Booking[]> {
+  const { data, error } = await supabase
+    .from('bookings')
+    .select('*, property:properties(title, location)')
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  return data as Booking[];
+}
 
-// Settings
-export const fetchSettings = (): Promise<Record<string, string>> => settingsApi.getAll();
-export const updateSetting = (key: string, value: string): Promise<any> => settingsApi.update(key, value);
+export async function updateBooking(id: string, updates: Partial<Booking>): Promise<Booking> {
+  const { data, error } = await supabase
+    .from('bookings')
+    .update(updates)
+    .eq('id', id)
+    .select()
+    .single();
+  if (error) throw error;
+  await supabase.rpc('log_activity', { 
+    action: 'update', 
+    entity: 'booking', 
+    entity_id: id, 
+    detail: `Updated booking status to ${updates.status}` 
+  });
+  return data as Booking;
+}
 
-// Stats, Categories, Amenities
-export const fetchAdminDashboardStats = (): Promise<any> => dashboardApi.getStats();
-export const fetchCategories = (): Promise<Category[]> => categoriesApi.getAll();
-export const fetchAmenities = (): Promise<Amenity[]> => amenitiesApi.getAll();
+export async function deleteBooking(id: string): Promise<void> {
+  const { error } = await supabase.from('bookings').delete().eq('id', id);
+  if (error) throw error;
+  await supabase.rpc('log_activity', { 
+    action: 'delete', 
+    entity: 'booking', 
+    entity_id: id, 
+    detail: 'Deleted booking' 
+  });
+}
 
-// Mock Image Upload
-export const uploadImage = async (file: File, bucket: string, path: string): Promise<string> => {
-  return URL.createObjectURL(file);
-};
-export const deleteImage = async (bucket: string, path: string): Promise<void> => {
-  return;
-};
+// ---------- Admin Inquiry CRUD ----------
+export async function fetchAllInquiries(): Promise<ContactInquiry[]> {
+  const { data, error } = await supabase
+    .from('contact_inquiries')
+    .select('*')
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  return data as ContactInquiry[];
+}
 
-// Mock Projects
-export const fetchProjects = async (): Promise<Project[]> => {
-  return [
-    {
-      id: 'project-1',
-      name: 'Aayat Vasant',
-      tagline: 'Modern tropical luxury villas',
-      location: 'Assagao, Goa',
-      project_type: 'villa',
-      status: 'under_construction',
-      price_range: '₹6.5 Cr - ₹8.5 Cr',
-      description: 'An exclusive collection of 4-bedroom modern tropical villas nestled in the premium valley of Assagao. Featuring private swimming pools, high double-height ceilings, and premium design finishes.',
-      highlights: ['4 BHK Luxury Villas', 'Private Pool & Deck', 'Assagao Prime Location', '100% Power Backup'],
-      amenities: ['Private Pool', '24/7 Security', 'Lush Gardens', 'Staff Quarters'],
-      images: ['https://images.pexels.com/photos/1732414/pexels-photo-1732414.jpeg?auto=compress&cs=tinysrgb&w=800'],
-      video_url: null,
-      brochure_url: null,
-      featured: true,
-      total_units: '6',
-      available_units: '3',
-      created_at: new Date().toISOString(),
-    },
-    {
-      id: 'project-2',
-      name: 'Aayat Ananta',
-      tagline: 'Stunning sunset view residences',
-      location: 'Siolim, Goa',
-      project_type: 'villa',
-      status: 'planning',
-      price_range: '₹5.2 Cr - ₹7.0 Cr',
-      description: 'Overlooking the serene backwaters of Siolim, Aayat Ananta offers luxury sunset-view residences designed with colonial architecture charm combined with state-of-the-art modern interiors.',
-      highlights: ['Colonial Portuguese Architecture', 'Sunset View Decks', 'Private Lift', 'Fully Loaded Kitchen'],
-      amenities: ['Gym', 'Clubhouse', 'Infinity Pool', 'Car Parking'],
-      images: ['https://images.pexels.com/photos/1438832/pexels-photo-1438832.jpeg?auto=compress&cs=tinysrgb&w=800'],
-      video_url: null,
-      brochure_url: null,
-      featured: true,
-      total_units: '8',
-      available_units: '8',
-      created_at: new Date().toISOString(),
-    },
-  ];
-};
+export async function updateInquiry(id: string, updates: Partial<ContactInquiry>): Promise<ContactInquiry> {
+  const { data, error } = await supabase
+    .from('contact_inquiries')
+    .update(updates)
+    .eq('id', id)
+    .select()
+    .single();
+  if (error) throw error;
+  await supabase.rpc('log_activity', { 
+    action: 'update', 
+    entity: 'inquiry', 
+    entity_id: id, 
+    detail: `Updated inquiry status to ${updates.status}` 
+  });
+  return data as ContactInquiry;
+}
+
+export async function deleteInquiry(id: string): Promise<void> {
+  const { error } = await supabase.from('contact_inquiries').delete().eq('id', id);
+  if (error) throw error;
+  await supabase.rpc('log_activity', { 
+    action: 'delete', 
+    entity: 'inquiry', 
+    entity_id: id, 
+    detail: 'Deleted inquiry' 
+  });
+}
+
+// ---------- Admin Testimonial CRUD ----------
+export async function fetchAllTestimonials(): Promise<Testimonial[]> {
+  const { data, error } = await supabase
+    .from('testimonials')
+    .select('*')
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  return data as Testimonial[];
+}
+
+export async function createTestimonial(testimonial: Omit<Testimonial, 'id' | 'created_at'>): Promise<Testimonial> {
+  const { data, error } = await supabase
+    .from('testimonials')
+    .insert(testimonial)
+    .select()
+    .single();
+  if (error) throw error;
+  await supabase.rpc('log_activity', { 
+    action: 'create', 
+    entity: 'testimonial', 
+    entity_id: data.id, 
+    detail: `Created testimonial from ${testimonial.author}` 
+  });
+  return data as Testimonial;
+}
+
+export async function updateTestimonial(id: string, updates: Partial<Testimonial>): Promise<Testimonial> {
+  const { data, error } = await supabase
+    .from('testimonials')
+    .update(updates)
+    .eq('id', id)
+    .select()
+    .single();
+  if (error) throw error;
+  await supabase.rpc('log_activity', { 
+    action: 'update', 
+    entity: 'testimonial', 
+    entity_id: id, 
+    detail: 'Updated testimonial' 
+  });
+  return data as Testimonial;
+}
+
+export async function deleteTestimonial(id: string): Promise<void> {
+  const { error } = await supabase.from('testimonials').delete().eq('id', id);
+  if (error) throw error;
+  await supabase.rpc('log_activity', { 
+    action: 'delete', 
+    entity: 'testimonial', 
+    entity_id: id, 
+    detail: 'Deleted testimonial' 
+  });
+}
+
+// ---------- Admin FAQ CRUD ----------
+export async function fetchAllFaqs(): Promise<Faq[]> {
+  const { data, error } = await supabase
+    .from('faqs')
+    .select('*')
+    .order('sort_order');
+  if (error) throw error;
+  return data as Faq[];
+}
+
+export async function createFaq(faq: Omit<Faq, 'id' | 'created_at'>): Promise<Faq> {
+  const { data, error } = await supabase
+    .from('faqs')
+    .insert(faq)
+    .select()
+    .single();
+  if (error) throw error;
+  await supabase.rpc('log_activity', { 
+    action: 'create', 
+    entity: 'faq', 
+    entity_id: data.id, 
+    detail: `Created FAQ: ${faq.question}` 
+  });
+  return data as Faq;
+}
+
+export async function updateFaq(id: string, updates: Partial<Faq>): Promise<Faq> {
+  const { data, error } = await supabase
+    .from('faqs')
+    .update(updates)
+    .eq('id', id)
+    .select()
+    .single();
+  if (error) throw error;
+  await supabase.rpc('log_activity', { 
+    action: 'update', 
+    entity: 'faq', 
+    entity_id: id, 
+    detail: 'Updated FAQ' 
+  });
+  return data as Faq;
+}
+
+export async function deleteFaq(id: string): Promise<void> {
+  const { error } = await supabase.from('faqs').delete().eq('id', id);
+  if (error) throw error;
+  await supabase.rpc('log_activity', { 
+    action: 'delete', 
+    entity: 'faq', 
+    entity_id: id, 
+    detail: 'Deleted FAQ' 
+  });
+}
+
+// ---------- Admin Team CRUD ----------
+export async function fetchAllTeam(): Promise<TeamMember[]> {
+  const { data, error } = await supabase
+    .from('team_members')
+    .select('*')
+    .order('sort_order');
+  if (error) throw error;
+  return data as TeamMember[];
+}
+
+export async function createTeamMember(member: Omit<TeamMember, 'id' | 'created_at'>): Promise<TeamMember> {
+  const { data, error } = await supabase
+    .from('team_members')
+    .insert(member)
+    .select()
+    .single();
+  if (error) throw error;
+  await supabase.rpc('log_activity', { 
+    action: 'create', 
+    entity: 'team_member', 
+    entity_id: data.id, 
+    detail: `Created team member: ${member.name}` 
+  });
+  return data as TeamMember;
+}
+
+export async function updateTeamMember(id: string, updates: Partial<TeamMember>): Promise<TeamMember> {
+  const { data, error } = await supabase
+    .from('team_members')
+    .update(updates)
+    .eq('id', id)
+    .select()
+    .single();
+  if (error) throw error;
+  await supabase.rpc('log_activity', { 
+    action: 'update', 
+    entity: 'team_member', 
+    entity_id: id, 
+    detail: 'Updated team member' 
+  });
+  return data as TeamMember;
+}
+
+export async function deleteTeamMember(id: string): Promise<void> {
+  const { error } = await supabase.from('team_members').delete().eq('id', id);
+  if (error) throw error;
+  await supabase.rpc('log_activity', { 
+    action: 'delete', 
+    entity: 'team_member', 
+    entity_id: id, 
+    detail: 'Deleted team member' 
+  });
+}
+
+// ---------- Admin Settings CRUD ----------
+export async function updateSetting(key: string, value: string): Promise<void> {
+  const { error } = await supabase
+    .from('settings')
+    .upsert({ key, value, updated_at: new Date().toISOString() });
+  if (error) throw error;
+  await supabase.rpc('log_activity', { 
+    action: 'update', 
+    entity: 'setting', 
+    entity_id: key, 
+    detail: `Updated setting: ${key}` 
+  });
+}
+
+// ---------- Image Upload ----------
+export async function uploadImage(file: File, bucket: string, path: string): Promise<string> {
+  const { data, error } = await supabase.storage
+    .from(bucket)
+    .upload(path, file, { upsert: true });
+  if (error) throw error;
+  const { data: { publicUrl } } = supabase.storage
+    .from(bucket)
+    .getPublicUrl(data.path);
+  return publicUrl;
+}
+
+export async function deleteImage(bucket: string, path: string): Promise<void> {
+  const { error } = await supabase.storage
+    .from(bucket)
+    .remove([path]);
+  if (error) throw error;
+}

@@ -56,8 +56,26 @@ export default async function handler(req, res) {
         console.log('[API] Missing email or password');
         return res.status(400).json({ error: 'Email and password required' });
       }
-      const admin = await Admin.findOne({ email });
+      
+      let admin = await Admin.findOne({ email });
       console.log('[API] Admin found:', !!admin);
+      
+      // Auto-seed admin if none exists (fallback for first-time deployment)
+      if (!admin) {
+        const adminCount = await Admin.countDocuments();
+        console.log('[API] Admin count:', adminCount);
+        if (adminCount === 0) {
+          console.log('[API] No admin users found, creating default admin');
+          const hashedPassword = await bcrypt.hash('admin123', 10);
+          admin = await Admin.create({
+            email: 'admin@aayatprojects.in',
+            password: hashedPassword,
+            role: 'admin'
+          });
+          console.log('[API] Default admin created');
+        }
+      }
+      
       if (!admin || !(await bcrypt.compare(password, admin.password))) {
         console.log('[API] Invalid credentials');
         return res.status(401).json({ error: 'Invalid credentials' });

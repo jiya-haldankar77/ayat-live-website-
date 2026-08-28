@@ -46,6 +46,20 @@ export default async function handler(req, res) {
   const { pathname } = new URL(req.url, `http://${req.headers.host}`);
   console.log('[API] Request:', req.method, pathname);
 
+  // ========== HEALTH CHECK ==========
+  // GET /api/health
+  if (req.method === 'GET' && pathname === '/api/health') {
+    console.log('[API] Health check requested');
+    return res.json({ 
+      status: 'ok', 
+      timestamp: new Date().toISOString(),
+      env: {
+        mongo_uri_set: !!process.env.MONGO_URI,
+        jwt_secret_set: !!process.env.JWT_SECRET
+      }
+    });
+  }
+
   // ========== AUTH ROUTES ==========
   // POST /api/auth/login
   if (req.method === 'POST' && pathname.endsWith('/auth/login')) {

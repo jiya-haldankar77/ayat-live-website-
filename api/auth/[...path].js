@@ -1,6 +1,6 @@
-import connectDB from '../lib/db.js';
-import { Admin } from '../lib/models.js';
-import { verifyAuth, JWT_SECRET } from '../lib/auth.js';
+import connectDB from '../../lib/db.js';
+import { Admin } from '../../lib/models.js';
+import { verifyAuth, JWT_SECRET } from '../../lib/auth.js';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 

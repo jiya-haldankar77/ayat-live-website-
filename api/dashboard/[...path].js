@@ -1,6 +1,6 @@
-import connectDB from '../lib/db.js';
-import { Property, Booking, Inquiry, ActivityLog } from '../lib/models.js';
-import { verifyAuth } from '../lib/auth.js';
+import connectDB from '../../lib/db.js';
+import { Property, Booking, Inquiry, ActivityLog } from '../../lib/models.js';
+import { verifyAuth } from '../../lib/auth.js';
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');

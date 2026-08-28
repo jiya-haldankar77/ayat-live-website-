@@ -1,7 +1,7 @@
-import connectDB from './lib/db.js';
-import { Settings, Category, Amenity } from './lib/models.js';
-import { verifyAuth } from './lib/auth.js';
-import { logActivity } from './lib/activity.js';
+import connectDB from '../lib/db.js';
+import { Settings, Category, Amenity } from '../lib/models.js';
+import { verifyAuth } from '../lib/auth.js';
+import { logActivity } from '../lib/activity.js';
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');

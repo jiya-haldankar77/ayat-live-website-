@@ -56,18 +56,18 @@ export const propertiesApi = {
 
 // Bookings API
 export const bookingsApi = {
-  getAll: (): Promise<any[]> => apiCall('/api/bookings'),
-  create: (data: any): Promise<any> => apiCall('/api/bookings', { method: 'POST', body: JSON.stringify(data) }),
-  update: (id: string, data: any): Promise<any> => apiCall(`/api/bookings/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
-  delete: (id: string): Promise<any> => apiCall(`/api/bookings/${id}`, { method: 'DELETE' }),
+  getAll: (): Promise<any[]> => apiCall('/api/forms/bookings'),
+  create: (data: any): Promise<any> => apiCall('/api/forms/bookings', { method: 'POST', body: JSON.stringify(data) }),
+  update: (id: string, data: any): Promise<any> => apiCall(`/api/forms/bookings/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  delete: (id: string): Promise<any> => apiCall(`/api/forms/bookings/${id}`, { method: 'DELETE' }),
 };
 
 // Inquiries API
 export const inquiriesApi = {
-  getAll: (): Promise<any[]> => apiCall('/api/inquiries'),
-  create: (data: any): Promise<any> => apiCall('/api/inquiries', { method: 'POST', body: JSON.stringify(data) }),
-  update: (id: string, data: any): Promise<any> => apiCall(`/api/inquiries/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
-  delete: (id: string): Promise<any> => apiCall(`/api/inquiries/${id}`, { method: 'DELETE' }),
+  getAll: (): Promise<any[]> => apiCall('/api/forms/inquiries'),
+  create: (data: any): Promise<any> => apiCall('/api/forms/inquiries', { method: 'POST', body: JSON.stringify(data) }),
+  update: (id: string, data: any): Promise<any> => apiCall(`/api/forms/inquiries/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  delete: (id: string): Promise<any> => apiCall(`/api/forms/inquiries/${id}`, { method: 'DELETE' }),
 };
 
 // Testimonials API

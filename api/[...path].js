@@ -12,6 +12,27 @@ export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   if (req.method === 'OPTIONS') return res.status(200).end();
 
+  // Parse request body for POST/PUT requests
+  if (req.method === 'POST' || req.method === 'PUT') {
+    try {
+      const body = await new Promise((resolve, reject) => {
+        let data = '';
+        req.on('data', chunk => data += chunk);
+        req.on('end', () => {
+          try {
+            resolve(data ? JSON.parse(data) : {});
+          } catch (e) {
+            resolve({});
+          }
+        });
+        req.on('error', reject);
+      });
+      req.body = body;
+    } catch (error) {
+      console.error('Error parsing request body:', error);
+    }
+  }
+
   await connectDB();
 
   const { pathname } = new URL(req.url, `http://${req.headers.host}`);

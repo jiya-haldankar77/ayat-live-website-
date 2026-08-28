@@ -6,6 +6,9 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 
 export default async function handler(req, res) {
+  console.log('[API] Handler invoked, method:', req.method);
+  console.log('[API] URL:', req.url);
+  console.log('[API] Headers:', JSON.stringify(req.headers));
   // CORS
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');

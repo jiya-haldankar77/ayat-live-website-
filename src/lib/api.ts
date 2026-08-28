@@ -1,5 +1,5 @@
-// API Base URL
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+// API Base URL - empty for Vercel (same domain), set for local development
+const API_URL = import.meta.env.VITE_API_URL || '';
 
 // Helper function for API calls
 async function apiCall<T = any>(endpoint: string, options: RequestInit = {}): Promise<T> {

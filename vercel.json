@@ -1,9 +1,20 @@
 {
   "cleanUrls": true,
+  "framework": "vite",
+  "buildCommand": "vite build",
+  "outputDirectory": "dist",
   "rewrites": [
-    {
-      "source": "/(.*)",
-      "destination": "/index.html"
-    }
+    { "source": "/api/auth/(.*)", "destination": "/api/auth/[...path]" },
+    { "source": "/api/properties/(.*)", "destination": "/api/properties/[...path]" },
+    { "source": "/api/bookings/(.*)", "destination": "/api/bookings/[...path]" },
+    { "source": "/api/inquiries/(.*)", "destination": "/api/inquiries/[...path]" },
+    { "source": "/api/testimonials/(.*)", "destination": "/api/testimonials/[...path]" },
+    { "source": "/api/faqs/(.*)", "destination": "/api/faqs/[...path]" },
+    { "source": "/api/team/(.*)", "destination": "/api/team/[...path]" },
+    { "source": "/api/dashboard/(.*)", "destination": "/api/dashboard/[...path]" },
+    { "source": "/api/settings", "destination": "/api/settings" },
+    { "source": "/api/categories", "destination": "/api/categories" },
+    { "source": "/api/amenities", "destination": "/api/amenities" },
+    { "source": "/((?!api/).*)", "destination": "/index.html" }
   ]
 }

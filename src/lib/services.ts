@@ -91,6 +91,7 @@ export async function fetchCategories(): Promise<Category[]> {
   return (data as Category[]) ?? [];
 }
 
+// ---------- Amenities ----------
 export async function fetchAmenities(): Promise<Amenity[]> {
   const { data } = await supabase.from('amenities').select('*').order('name');
   return (data as Amenity[]) ?? [];

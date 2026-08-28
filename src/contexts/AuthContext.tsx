@@ -65,17 +65,47 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signIn = async (email: string, password: string) => {
     try {
+      const url = import.meta.env.VITE_SUPABASE_URL;
+      const key = import.meta.env.VITE_SUPABASE_ANON_KEY;
+      if (!url || !key) {
+        return { error: 'Supabase environment variables (VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY) are not configured. Please ensure they are added to the Vercel Production environment.' };
+      }
+
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
-      if (error) throw error;
+      if (error) {
+        return { error: error.message || 'Invalid login credentials' };
+      }
+
+      if (data?.user) {
+        const { data: adminData, error: adminError } = await supabase
+          .from('admins')
+          .select('role')
+          .eq('id', data.user.id)
+          .maybeSingle();
+
+        if (adminError) {
+          console.error('Error verifying admin permissions:', adminError);
+          await supabase.auth.signOut();
+          return { error: `Permission check failed: ${adminError.message}` };
+        }
+
+        if (adminData?.role !== 'admin') {
+          await supabase.auth.signOut();
+          return { error: 'Access denied: You do not have administrator privileges.' };
+        }
+      }
+
       return { error: null };
-    } catch (error) {
-      return { error: error instanceof Error ? error.message : 'Login failed' };
+    } catch (error: any) {
+      console.error('Sign in exception:', error);
+      return { error: error?.message || (typeof error === 'object' ? JSON.stringify(error) : String(error)) || 'Authentication failed' };
     }
   };
+
 
   const signOut = async () => {
     await supabase.auth.signOut();

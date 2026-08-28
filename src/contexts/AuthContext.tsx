@@ -67,8 +67,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const url = import.meta.env.VITE_SUPABASE_URL;
       const key = import.meta.env.VITE_SUPABASE_ANON_KEY;
-      if (!url || !key) {
-        return { error: 'Supabase environment variables (VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY) are not configured. Please ensure they are added to the Vercel Production environment.' };
+      if (!url || !key || url.includes('placeholder') || key.includes('placeholder')) {
+        return { error: 'Supabase environment variables (VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY) are not configured. Please ensure they are added to both your Vercel Production and Preview environments, and then redeployed.' };
       }
 
       const { data, error } = await supabase.auth.signInWithPassword({

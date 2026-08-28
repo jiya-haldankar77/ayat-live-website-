@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { ChevronDown } from 'lucide-react';
-import { fetchFaqs } from '@/lib/services';
+import { faqsApi } from '@/lib/api';
 import { useEffect } from 'react';
 import type { Faq } from '@/types';
 
@@ -9,7 +9,7 @@ export default function FaqSection() {
   const [open, setOpen] = useState<number | null>(0);
 
   useEffect(() => {
-    fetchFaqs().then(setFaqs).catch(() => {});
+    faqsApi.getPublished().then((data: any) => setFaqs(data)).catch(() => {});
   }, []);
 
   if (faqs.length === 0) return null;

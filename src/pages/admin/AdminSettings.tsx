@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Save, Check } from 'lucide-react';
-import { fetchSettings, updateSetting } from '@/lib/services';
+import { settingsApi } from '@/lib/api';
 
 const FIELDS = [
   { key: 'hero_title', label: 'Hero Title' },
@@ -19,16 +19,14 @@ export default function AdminSettings() {
   const [values, setValues] = useState<Record<string, string>>({});
   const [saved, setSaved] = useState(false);
 
-  useEffect(() => { fetchSettings().then(setValues).catch(() => {}); }, []);
+  useEffect(() => {
+    settingsApi.getAll().then((data: any) => setValues(data)).catch(() => {});
+  }, []);
 
-  const save = async () => {
-    try {
-      await Promise.all(Object.entries(values).map(([key, value]) => updateSetting(key, value)));
-      setSaved(true);
-      setTimeout(() => setSaved(false), 3000);
-    } catch (error) {
-      console.error('Error saving settings:', error);
-    }
+  const handleSave = async (key: string) => {
+    await settingsApi.update(key, values[key]);
+    setSaved(true);
+    setTimeout(() => setSaved(false), 3000);
   };
 
   return (
@@ -46,7 +44,7 @@ export default function AdminSettings() {
             )}
           </div>
         ))}
-        <button onClick={save} className={`flex items-center gap-2 px-5 py-2.5 text-sm font-medium rounded-lg transition-all ${saved ? 'bg-emerald-600 text-white' : 'bg-gold text-stone-900 hover:bg-gold-500'}`}>
+        <button onClick={() => handleSave('all')} className={`flex items-center gap-2 px-5 py-2.5 text-sm font-medium rounded-lg transition-all ${saved ? 'bg-emerald-600 text-white' : 'bg-gold text-stone-900 hover:bg-gold-500'}`}>
           {saved ? <><Check className="w-4 h-4" /> Saved</> : <><Save className="w-4 h-4" /> Save Settings</>}
         </button>
       </div>

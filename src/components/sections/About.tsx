@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Target, Eye, Heart, Award } from 'lucide-react';
 import { VALUES, STATS } from '@/lib/siteData';
-import { fetchTeam } from '@/lib/services';
+import { teamApi } from '@/lib/api';
 import type { TeamMember } from '@/types';
 
 const VALUE_ICONS: Record<string, typeof Target> = { precision: Target, transparency: Eye, passion: Heart };
@@ -10,7 +10,7 @@ export default function About() {
   const [team, setTeam] = useState<TeamMember[]>([]);
 
   useEffect(() => {
-    fetchTeam().then(setTeam).catch(() => {});
+    teamApi.getPublished().then((data: any) => setTeam(data)).catch(() => {});
   }, []);
 
   return (

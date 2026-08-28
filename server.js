@@ -9,8 +9,8 @@ dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3001;
-const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/ayat';
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
+const MONGO_URI = process.env.MONGO_URI || 'mongodb+srv://jiyahaldankar777_db_user:W1Kaiz8rnpzsHXzq@cluster0.4om1awa.mongodb.net/?appName=Cluster0';
+const JWT_SECRET = process.env.JWT_SECRET || 'aayat-secret-key-2026-change-in-production';
 
 app.use(cors());
 app.use(express.json());

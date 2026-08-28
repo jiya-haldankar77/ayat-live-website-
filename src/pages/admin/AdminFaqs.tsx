@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Plus, Pencil, Trash2, X, ChevronUp, ChevronDown } from 'lucide-react';
-import { fetchAllFaqs, createFaq, updateFaq, deleteFaq } from '@/lib/services';
+import { faqsApi } from '@/lib/api';
 import type { Faq } from '@/types';
 
 export default function AdminFaqs() {
@@ -9,37 +9,33 @@ export default function AdminFaqs() {
   const [editing, setEditing] = useState<Faq | null>(null);
   const [form, setForm] = useState({ question: '', answer: '', sort_order: 0, published: true });
 
-  const load = () => fetchAllFaqs().then((d) => setItems(d)).catch(() => {});
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    faqsApi.getAll().then((data: any) => setItems(data)).catch(() => {});
+  }, []);
 
   const openNew = () => { setForm({ question: '', answer: '', sort_order: items.length, published: true }); setEditing(null); setShowForm(true); };
   const openEdit = (f: Faq) => { setForm({ question: f.question, answer: f.answer, sort_order: f.sort_order, published: f.published }); setEditing(f); setShowForm(true); };
-  const save = async () => {
-    const payload = { question: form.question, answer: form.answer, sort_order: form.sort_order, published: form.published };
-    try {
-      if (editing) await updateFaq(editing.id, payload);
-      else await createFaq(payload);
-      setShowForm(false); load();
-    } catch (error) {
-      console.error('Error saving FAQ:', error);
+  const handleSave = async () => {
+    if (editing) {
+      await faqsApi.update(editing.id, form);
+    } else {
+      await faqsApi.create(form as Omit<Faq, 'id' | 'created_at'>);
     }
+    setShowForm(false);
+    faqsApi.getAll().then((data: any) => setItems(data)).catch(() => {});
   };
-  const remove = async (f: Faq) => { 
-    if (confirm('Delete this FAQ?')) { 
-      try {
-        await deleteFaq(f.id); 
-        load(); 
-      } catch (error) {
-        console.error('Error deleting FAQ:', error);
-      }
-    } 
+  const handleDelete = async (id: string) => {
+    if (confirm('Delete this FAQ?')) {
+      await faqsApi.delete(id);
+      faqsApi.getAll().then((data: any) => setItems(data)).catch(() => {});
+    }
   };
   const move = async (f: Faq, dir: -1 | 1) => {
     const idx = items.findIndex((i) => i.id === f.id);
     const swap = items[idx + dir]; if (!swap) return;
     try {
-      await Promise.all([updateFaq(f.id, { sort_order: swap.sort_order }), updateFaq(swap.id, { sort_order: f.sort_order })]);
-      load();
+      await Promise.all([faqsApi.update(f.id, { sort_order: swap.sort_order }), faqsApi.update(swap.id, { sort_order: f.sort_order })]);
+      faqsApi.getAll().then((data: any) => setItems(data)).catch(() => {});
     } catch (error) {
       console.error('Error reordering FAQs:', error);
     }
@@ -56,7 +52,7 @@ export default function AdminFaqs() {
               <button onClick={() => move(f, -1)} disabled={i === 0} className="p-1.5 text-stone-400 disabled:opacity-30"><ChevronUp className="w-4 h-4" /></button>
               <button onClick={() => move(f, 1)} disabled={i === items.length - 1} className="p-1.5 text-stone-400 disabled:opacity-30"><ChevronDown className="w-4 h-4" /></button>
               <button onClick={() => openEdit(f)} className="p-2 text-stone-500 hover:text-gold"><Pencil className="w-4 h-4" /></button>
-              <button onClick={() => remove(f)} className="p-2 text-stone-400 hover:text-red-500"><Trash2 className="w-4 h-4" /></button>
+              <button onClick={() => handleDelete(f.id)} className="p-2 text-stone-400 hover:text-red-500"><Trash2 className="w-4 h-4" /></button>
             </div>
           </div>
         ))}
@@ -72,7 +68,7 @@ export default function AdminFaqs() {
               <div><label className="block text-xs text-stone-500 mb-1.5">Answer *</label><textarea rows={3} value={form.answer} onChange={(e) => setForm({ ...form, answer: e.target.value })} className="w-full px-4 py-2.5 text-sm border border-stone-200 rounded-lg focus:border-gold outline-none resize-none" /></div>
               <label className="flex items-center gap-2 text-sm text-stone-700"><input type="checkbox" checked={form.published} onChange={(e) => setForm({ ...form, published: e.target.checked })} /> Published</label>
             </div>
-            <div className="p-6 border-t border-stone-100 flex justify-end gap-3"><button onClick={() => setShowForm(false)} className="px-5 py-2.5 text-sm border border-stone-200 rounded-lg">Cancel</button><button onClick={save} className="px-5 py-2.5 text-sm font-medium text-stone-900 bg-gold rounded-lg">Save</button></div>
+            <div className="p-6 border-t border-stone-100 flex justify-end gap-3"><button onClick={() => setShowForm(false)} className="px-5 py-2.5 text-sm border border-stone-200 rounded-lg">Cancel</button><button onClick={handleSave} className="px-5 py-2.5 text-sm font-medium text-stone-900 bg-gold rounded-lg">Save</button></div>
           </div>
         </div>
       )}

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { MapPin, Check, ArrowRight, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { fetchProjects } from '@/lib/services';
+import { propertiesApi } from '@/lib/api';
 import type { Project } from '@/types';
 import { PROJECT_STATUS_LABELS } from '@/lib/siteData';
 
@@ -13,7 +13,7 @@ export default function OurProjects() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    fetchProjects().then((data) => { setProjects(data.slice(0, 4)); setLoading(false); }).catch(() => setLoading(false));
+    propertiesApi.getPublished().then((data: any) => { setProjects(data.slice(0, 4)); setLoading(false); }).catch(() => setLoading(false));
   }, []);
 
   const go = (href: string) => navigate(href);

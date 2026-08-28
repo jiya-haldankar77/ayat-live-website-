@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MapPin, ArrowRight } from 'lucide-react';
-import { fetchFeaturedProperties } from '@/lib/services';
+import { propertiesApi } from '@/lib/api';
 import type { Property } from '@/types';
 
 export default function Properties() {
@@ -10,7 +10,11 @@ export default function Properties() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    fetchFeaturedProperties(3).then((data) => { setProperties(data); setLoading(false); }).catch((err) => {
+    propertiesApi.getPublished().then((data: any) => {
+      const featured = data.filter((p: Property) => p.featured).slice(0, 3);
+      setProperties(featured);
+      setLoading(false);
+    }).catch((err: any) => {
       console.error('Failed to fetch properties:', err);
       setLoading(false);
     });

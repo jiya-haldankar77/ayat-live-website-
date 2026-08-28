@@ -11,7 +11,7 @@ export default function Privacy() {
           <h2 className="font-display text-2xl text-stone-900 mt-8 mb-3">How We Use Your Information</h2>
           <p>Your information is used solely to respond to your inquiries, process bookings, and provide our real estate services. We do not sell or share your data with third parties.</p>
           <h2 className="font-display text-2xl text-stone-900 mt-8 mb-3">Data Security</h2>
-          <p>All data is stored securely using Supabase with row-level security policies. Access is restricted to authorized administrative personnel only.</p>
+          <p>All data is stored securely using MongoDB with proper access controls. Access is restricted to authorized administrative personnel only.</p>
           <h2 className="font-display text-2xl text-stone-900 mt-8 mb-3">Your Rights</h2>
           <p>You may request access to, correction of, or deletion of your personal data at any time by contacting us at hello@aayatprojects.in.</p>
         </div>

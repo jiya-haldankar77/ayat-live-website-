@@ -1,21 +1,21 @@
 import { useEffect, useState } from 'react';
 import { Building2, CalendarDays, Mail, TrendingUp, Bell } from 'lucide-react';
-import { fetchAdminDashboardStats, fetchProperties, fetchTestimonials } from '@/lib/services';
+import { dashboardApi, propertiesApi, testimonialsApi } from '@/lib/api';
 import type { Property, Testimonial, Notification } from '@/types';
 
 export default function AdminDashboard() {
   const [stats, setStats] = useState({ totalProperties: 0, totalBookings: 0, totalInquiries: 0, notifications: [] as Notification[] });
   const [recentProps, setRecentProps] = useState<Property[]>([]);
+  const [recentTestimonials, setRecentTestimonials] = useState<Testimonial[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    Promise.all([fetchAdminDashboardStats(), fetchProperties(), fetchTestimonials()])
-      .then(([s, p]) => {
-        setStats(s);
-        setRecentProps(p.slice(0, 4));
-        setLoading(false);
-      })
-      .catch(() => setLoading(false));
+    Promise.all([dashboardApi.getStats(), propertiesApi.getAll(), testimonialsApi.getAll()]).then(([stats, props, test]) => {
+      setStats(stats);
+      setRecentProps(props.slice(0, 5));
+      setRecentTestimonials(test.slice(0, 5));
+      setLoading(false);
+    }).catch(() => setLoading(false));
   }, []);
 
   const cards = [

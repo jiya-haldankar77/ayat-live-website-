@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Quote, ChevronLeft, ChevronRight } from 'lucide-react';
-import { fetchTestimonials } from '@/lib/services';
+import { testimonialsApi } from '@/lib/api';
 import type { Testimonial } from '@/types';
 
 export default function Testimonials() {
@@ -9,7 +9,7 @@ export default function Testimonials() {
   const [paused, setPaused] = useState(false);
 
   useEffect(() => {
-    fetchTestimonials().then(setTestimonials).catch(() => {});
+    testimonialsApi.getPublished().then((data: any) => setTestimonials(data)).catch(() => {});
   }, []);
 
   useEffect(() => {

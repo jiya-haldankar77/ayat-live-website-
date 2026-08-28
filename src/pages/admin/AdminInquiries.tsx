@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Search, Trash2, Mail, Archive, CheckCircle, Download } from 'lucide-react';
-import { fetchAllInquiries, updateInquiry, deleteInquiry } from '@/lib/services';
+import { inquiriesApi } from '@/lib/api';
 import type { ContactInquiry } from '@/types';
 
 export default function AdminInquiries() {
@@ -10,28 +10,30 @@ export default function AdminInquiries() {
 
   const load = () => {
     setLoading(true);
-    fetchAllInquiries().then((d) => { setInquiries(d); setLoading(false); }).catch(() => setLoading(false));
+    inquiriesApi.getAll().then((data: any) => { setInquiries(data); setLoading(false); }).catch(() => setLoading(false));
   };
 
   useEffect(() => { load(); }, []);
 
   const updateStatus = async (inq: ContactInquiry, status: string) => {
     try {
-      await updateInquiry(inq.id, { status });
-      load();
+      await inquiriesApi.update(inq.id, { status });
+      inquiriesApi.getAll().then((data: any) => setInquiries(data)).catch(() => {});
     } catch (error) {
       console.error('Error updating inquiry status:', error);
     }
   };
-  const remove = async (inq: ContactInquiry) => {
+
+  const handleDelete = async (inq: ContactInquiry) => {
     if (!confirm('Delete this inquiry?')) return;
     try {
-      await deleteInquiry(inq.id);
-      load();
+      await inquiriesApi.delete(inq.id);
+      inquiriesApi.getAll().then((data: any) => setInquiries(data)).catch(() => {});
     } catch (error) {
       console.error('Error deleting inquiry:', error);
     }
   };
+
   const exportCsv = () => {
     const headers = ['Name', 'Phone', 'Email', 'Message', 'Property', 'Budget', 'Source', 'Date'];
     const rows = inquiries.map((i) => [i.name, i.phone, i.email, i.message, i.interested_property || '', i.budget || '', i.source_page || '', new Date(i.created_at).toLocaleString()]);
@@ -82,7 +84,7 @@ export default function AdminInquiries() {
                 <button onClick={() => updateStatus(inq, 'read')} className="p-2 text-sky-600 hover:bg-sky-50 rounded" title="Mark Read"><CheckCircle className="w-4 h-4" /></button>
                 <a href={`mailto:${inq.email}`} className="p-2 text-stone-500 hover:bg-stone-50 rounded" title="Reply"><Mail className="w-4 h-4" /></a>
                 <button onClick={() => updateStatus(inq, 'archived')} className="p-2 text-stone-500 hover:bg-stone-50 rounded" title="Archive"><Archive className="w-4 h-4" /></button>
-                <button onClick={() => remove(inq)} className="p-2 text-stone-400 hover:text-red-500" title="Delete"><Trash2 className="w-4 h-4" /></button>
+                <button onClick={() => handleDelete(inq)} className="p-2 text-stone-400 hover:text-red-500" title="Delete"><Trash2 className="w-4 h-4" /></button>
               </div>
             </div>
           </div>

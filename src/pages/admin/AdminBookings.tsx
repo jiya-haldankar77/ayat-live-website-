@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Search, Check, X, Trash2 } from 'lucide-react';
-import { fetchAllBookings, updateBooking, deleteBooking } from '@/lib/services';
+import { bookingsApi } from '@/lib/api';
 import type { Booking } from '@/types';
 
 const STATUSES = ['pending', 'confirmed', 'rejected', 'cancelled'];
@@ -13,35 +13,33 @@ export default function AdminBookings() {
   const [statusFilter, setStatusFilter] = useState('all');
 
   const load = () => {
+    useEffect(() => {
+      bookingsApi.getAll().then((data: any) => setBookings(data)).catch(() => {});
+    }, []);
     setLoading(true);
-    fetchAllBookings().then((d) => { setBookings(d); setLoading(false); }).catch(() => setLoading(false));
+    bookingsApi.getAll().then((data: any) => { setBookings(data); setLoading(false); }).catch(() => setLoading(false));
   };
 
   useEffect(() => { load(); }, []);
 
-  const updateStatus = async (b: Booking, status: string) => {
-    try {
-      await updateBooking(b.id, { status });
-      load();
-    } catch (error) {
-      console.error('Error updating booking status:', error);
-    }
+  const updateStatus = async (id: string, status: string) => {
+    await bookingsApi.update(id, { status });
+    bookingsApi.getAll().then((data: any) => setBookings(data)).catch(() => {});
   };
-  const updatePayment = async (b: Booking, payment_status: string) => {
+
+  const updatePayment = async (id: string, payment_status: string) => {
     try {
-      await updateBooking(b.id, { payment_status });
-      load();
+      await bookingsApi.update(id, { payment_status });
+      bookingsApi.getAll().then((data: any) => setBookings(data)).catch(() => {});
     } catch (error) {
       console.error('Error updating payment status:', error);
     }
   };
-  const remove = async (b: Booking) => {
-    if (!confirm('Delete this booking?')) return;
-    try {
-      await deleteBooking(b.id);
-      load();
-    } catch (error) {
-      console.error('Error deleting booking:', error);
+
+  const handleDelete = async (id: string) => {
+    if (confirm('Delete this booking?')) {
+      await bookingsApi.delete(id);
+      bookingsApi.getAll().then((data: any) => setBookings(data)).catch(() => {});
     }
   };
 
@@ -81,13 +79,13 @@ export default function AdminBookings() {
               <tr key={b.id} className="hover:bg-stone-50">
                 <td className="p-4"><p className="font-medium text-stone-900">{b.customer_name}</p><p className="text-xs text-stone-500">{b.customer_email}</p><p className="text-xs text-stone-500">{b.customer_phone}</p>{b.notes && <p className="text-xs text-stone-400 mt-1 italic">"{b.notes}"</p>}</td>
                 <td className="p-4 text-stone-600">{new Date(b.booking_date).toLocaleDateString('en-IN')}</td>
-                <td className="p-4"><select value={b.status} onChange={(e) => updateStatus(b, e.target.value)} className={`text-xs px-2 py-1 rounded border-0 cursor-pointer ${statusColor(b.status)}`}>{STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}</select></td>
-                <td className="p-4"><select value={b.payment_status} onChange={(e) => updatePayment(b, e.target.value)} className="text-xs px-2 py-1 rounded bg-stone-100 border-0 cursor-pointer">{PAYMENT.map((p) => <option key={p} value={p}>{p}</option>)}</select></td>
+                <td className="p-4"><select value={b.status} onChange={(e) => updateStatus(b.id, e.target.value)} className={`text-xs px-2 py-1 rounded border-0 cursor-pointer ${statusColor(b.status)}`}>{STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}</select></td>
+                <td className="p-4"><select value={b.payment_status} onChange={(e) => updatePayment(b.id, e.target.value)} className="text-xs px-2 py-1 rounded bg-stone-100 border-0 cursor-pointer">{PAYMENT.map((p) => <option key={p} value={p}>{p}</option>)}</select></td>
                 <td className="p-4 text-right">
                   <div className="flex items-center justify-end gap-1">
-                    <button onClick={() => updateStatus(b, 'confirmed')} className="p-2 text-emerald-600 hover:bg-emerald-50 rounded" title="Confirm"><Check className="w-4 h-4" /></button>
-                    <button onClick={() => updateStatus(b, 'rejected')} className="p-2 text-red-500 hover:bg-red-50 rounded" title="Reject"><X className="w-4 h-4" /></button>
-                    <button onClick={() => remove(b)} className="p-2 text-stone-400 hover:text-red-500" title="Delete"><Trash2 className="w-4 h-4" /></button>
+                    <button onClick={() => updateStatus(b.id, 'confirmed')} className="p-2 text-emerald-600 hover:bg-emerald-50 rounded" title="Confirm"><Check className="w-4 h-4" /></button>
+                    <button onClick={() => updateStatus(b.id, 'rejected')} className="p-2 text-red-500 hover:bg-red-50 rounded" title="Reject"><X className="w-4 h-4" /></button>
+                    <button onClick={() => handleDelete(b.id)} className="p-2 text-stone-400 hover:text-red-500" title="Delete"><Trash2 className="w-4 h-4" /></button>
                   </div>
                 </td>
               </tr>

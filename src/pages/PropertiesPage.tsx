@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { MapPin, Bed, Bath, Maximize, Search, SlidersHorizontal, X } from 'lucide-react';
-import { fetchProperties, fetchCategories } from '@/lib/services';
+import { propertiesApi, categoriesApi } from '@/lib/api';
 import type { Property, Category } from '@/types';
 import { PROPERTY_TYPES, REGIONS, PRICE_FILTERS, SORT_OPTIONS, STATUS_LABELS, STATUS_STYLES } from '@/lib/siteData';
 import { useScrollReveal } from '@/hooks/useScrollReveal';
@@ -20,18 +20,28 @@ export default function PropertiesPage() {
   const [showFilters, setShowFilters] = useState(false);
 
   useEffect(() => {
-    fetchCategories().then(setCategories).catch(() => {});
+    categoriesApi.getAll().then((data: any) => setCategories(data)).catch(() => {});
     const t = setTimeout(() => {
       setLoading(true);
-      const range = PRICE_FILTERS.find((f) => f.value === price);
-      fetchProperties({
-        type, region, beds,
-        minPrice: range?.min, maxPrice: range?.max,
-        search: search || undefined,
-      }).then((data) => {
-        let sorted = [...data];
-        if (sort === 'price_asc') sorted.sort((a, b) => a.price_value - b.price_value);
-        else if (sort === 'price_desc') sorted.sort((a, b) => b.price_value - a.price_value);
+      propertiesApi.getPublished().then((data: any) => {
+        let filtered = [...data];
+        const range = PRICE_FILTERS.find((f) => f.value === price);
+        
+        if (type && type !== 'all') filtered = filtered.filter((p: Property) => p.property_type === type);
+        if (region && region !== 'all') filtered = filtered.filter((p: Property) => p.region === region);
+        if (beds && beds !== 'all') filtered = filtered.filter((p: Property) => (p.bedrooms || 0) >= Number(beds));
+        if (range?.min) filtered = filtered.filter((p: Property) => p.price_value >= range.min);
+        if (range?.max) filtered = filtered.filter((p: Property) => p.price_value < range.max);
+        if (search) filtered = filtered.filter((p: Property) => 
+          p.title?.toLowerCase().includes(search.toLowerCase()) || 
+          p.location?.toLowerCase().includes(search.toLowerCase())
+        );
+        
+        let sorted = [...filtered];
+        if (sort === 'price_asc') sorted.sort((a: Property, b: Property) => a.price_value - b.price_value);
+        else if (sort === 'price_desc') sorted.sort((a: Property, b: Property) => b.price_value - a.price_value);
+        else sorted.sort((a: Property, b: Property) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
+        
         setProperties(sorted);
         setLoading(false);
       }).catch(() => setLoading(false));

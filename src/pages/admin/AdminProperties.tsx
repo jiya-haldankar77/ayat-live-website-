@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Plus, Pencil, Trash2, X, Star, Search } from 'lucide-react';
-import { fetchAllProperties, createProperty, updateProperty, deleteProperty, fetchCategories, uploadImage, deleteImage } from '@/lib/services';
+import { propertiesApi, categoriesApi } from '@/lib/api';
 import type { Property, Category } from '@/types';
 import { PROPERTY_TYPES, REGIONS, STATUS_LABELS } from '@/lib/siteData';
 
@@ -22,12 +22,12 @@ export default function AdminProperties() {
 
   const load = () => {
     setLoading(true);
-    fetchAllProperties().then((d) => { setProperties(d); setLoading(false); }).catch(() => setLoading(false));
+    propertiesApi.getAll().then((data: any) => { setProperties(data); setLoading(false); }).catch(() => setLoading(false));
   };
 
   useEffect(() => {
     load();
-    fetchCategories().then(setCategories).catch(() => {});
+    categoriesApi.getAll().then(setCategories).catch(() => {});
   }, []);
 
   const openNew = () => { setForm(EMPTY); setEditing(null); setShowForm(true); };
@@ -48,9 +48,9 @@ export default function AdminProperties() {
     setEditing(p); setShowForm(true);
   };
 
-  const save = async () => {
+  const handleSave = async () => {
     setSaving(true);
-    const payload = {
+    const formData = {
       title: form.title, slug: form.slug || null, location: form.location, price: form.price,
       price_value: Number(form.price_value), price_range: form.price_range || null,
       property_type: form.property_type, category_id: form.category_id || null,
@@ -62,32 +62,25 @@ export default function AdminProperties() {
       completion_date: form.completion_date || null, latitude: form.latitude ? Number(form.latitude) : null,
       longitude: form.longitude ? Number(form.longitude) : null, map_embed_url: form.map_embed_url || null,
     };
-    try {
-      if (editing) {
-        await updateProperty(editing.id, payload);
-      } else {
-        await createProperty(payload);
-      }
-      setSaving(false); setShowForm(false); load();
-    } catch (error) {
-      console.error('Error saving property:', error);
-      setSaving(false);
+    if (editing) {
+      await propertiesApi.update(editing.id, formData);
+    } else {
+      await propertiesApi.create(formData as Omit<Property, 'id' | 'created_at'>);
     }
+    setSaving(false); setShowForm(false); load();
   };
 
-  const remove = async (p: Property) => {
-    if (!confirm(`Delete "${p.title}"?`)) return;
-    try {
-      await deleteProperty(p.id);
-      load();
-    } catch (error) {
-      console.error('Error deleting property:', error);
+  const handleDelete = async (id: string) => {
+    if (confirm('Delete this property?')) {
+      await propertiesApi.delete(id);
+      propertiesApi.getAll().then((data: any) => setProperties(data)).catch(() => {});
     }
   };
 
   const toggleFeatured = async (p: Property) => {
     try {
-      await updateProperty(p.id, { featured: !p.featured });
+      await propertiesApi.update(p.id, { featured: !p.featured });
+      propertiesApi.getAll().then((data: any) => setProperties(data)).catch(() => {});
       load();
     } catch (error) {
       console.error('Error toggling featured:', error);
@@ -96,7 +89,7 @@ export default function AdminProperties() {
 
   const togglePublished = async (p: Property) => {
     try {
-      await updateProperty(p.id, { published: !p.published });
+      await propertiesApi.update(p.id, { published: !p.published });
       load();
     } catch (error) {
       console.error('Error toggling published:', error);
@@ -131,7 +124,7 @@ export default function AdminProperties() {
                 <td className="p-4"><span className="text-xs px-2 py-1 bg-stone-100 rounded">{STATUS_LABELS[p.status] || p.status}</span></td>
                 <td className="p-4 text-center"><button onClick={() => toggleFeatured(p)}><Star className={`w-5 h-5 ${p.featured ? 'text-gold fill-gold' : 'text-stone-300'}`} /></button></td>
                 <td className="p-4 text-center"><button onClick={() => togglePublished(p)} className={`text-xs px-2 py-1 rounded ${p.published ? 'bg-emerald-100 text-emerald-700' : 'bg-stone-100 text-stone-500'}`}>{p.published ? 'Live' : 'Draft'}</button></td>
-                <td className="p-4 text-right"><div className="flex items-center justify-end gap-2"><button onClick={() => openEdit(p)} className="p-2 text-stone-500 hover:text-gold"><Pencil className="w-4 h-4" /></button><button onClick={() => remove(p)} className="p-2 text-stone-500 hover:text-red-500"><Trash2 className="w-4 h-4" /></button></div></td>
+                <td className="p-4 text-right"><div className="flex items-center justify-end gap-2"><button onClick={() => openEdit(p)} className="p-2 text-stone-500 hover:text-gold"><Pencil className="w-4 h-4" /></button><button onClick={() => handleDelete(p.id)} className="p-2 text-stone-500 hover:text-red-500"><Trash2 className="w-4 h-4" /></button></div></td>
               </tr>
             ))}
             {filtered.length === 0 && <tr><td colSpan={6} className="p-8 text-center text-stone-400">{loading ? 'Loading...' : 'No properties found.'}</td></tr>}
@@ -186,7 +179,7 @@ export default function AdminProperties() {
             </div>
             <div className="p-6 border-t border-stone-100 flex justify-end gap-3">
               <button onClick={() => setShowForm(false)} className="px-5 py-2.5 text-sm border border-stone-200 rounded-lg hover:bg-stone-50">Cancel</button>
-              <button onClick={save} disabled={saving} className="px-5 py-2.5 text-sm font-medium text-stone-900 bg-gold hover:bg-gold-500 rounded-lg disabled:opacity-50">{saving ? 'Saving...' : 'Save Property'}</button>
+              <button onClick={handleSave} disabled={saving} className="px-5 py-2.5 text-sm font-medium text-stone-900 bg-gold hover:bg-gold-500 rounded-lg disabled:opacity-50">{saving ? 'Saving...' : 'Save Property'}</button>
             </div>
           </div>
         </div>

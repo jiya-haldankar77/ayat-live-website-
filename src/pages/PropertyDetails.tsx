@@ -1,9 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { MapPin, Bed, Bath, Maximize, Check, ChevronLeft, ChevronRight, X, FileText, Play, ArrowLeft, Calendar, Phone } from 'lucide-react';
-import { fetchPropertyBySlug } from '@/lib/services';
-import { createBooking, createInquiry } from '@/lib/services';
-import type { PropertyWithRelations } from '@/types';
+import { propertiesApi, bookingsApi, inquiriesApi } from '@/lib/api';
+import type { PropertyWithRelations, Property } from '@/types';
 import { STATUS_LABELS, STATUS_STYLES } from '@/lib/siteData';
 import { useSettings } from '@/contexts/SettingsContext';
 import { useScrollReveal } from '@/hooks/useScrollReveal';
@@ -24,7 +23,11 @@ export default function PropertyDetails() {
   useEffect(() => {
     if (!slug) return;
     setLoading(true);
-    fetchPropertyBySlug(slug).then((p) => { setProperty(p); setLoading(false); }).catch(() => setLoading(false));
+    propertiesApi.getPublished().then((data: any) => {
+      const p = data.find((prop: Property) => prop.slug === slug);
+      setProperty(p || null);
+      setLoading(false);
+    }).catch(() => setLoading(false));
   }, [slug]);
 
   const images = property?.images?.length ? property.images : [];
@@ -33,7 +36,7 @@ export default function PropertyDetails() {
     e.preventDefault();
     if (!property) return;
     const fd = new FormData(e.currentTarget);
-    await createBooking({
+    await bookingsApi.create({
       property_id: property.id,
       customer_name: String(fd.get('name')),
       customer_email: String(fd.get('email')),
@@ -48,7 +51,7 @@ export default function PropertyDetails() {
   const handleInquiry = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
-    await createInquiry({
+    await inquiriesApi.create({
       name: String(fd.get('name')),
       phone: String(fd.get('phone')),
       email: String(fd.get('email')),

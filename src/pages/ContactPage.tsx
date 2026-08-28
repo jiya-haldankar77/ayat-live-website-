@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Phone, Mail, MapPin, Clock, Send, Check, MessageCircle } from 'lucide-react';
-import { createInquiry } from '@/lib/services';
+import { inquiriesApi } from '@/lib/api';
 import { useSettings } from '@/contexts/SettingsContext';
 import { useScrollReveal } from '@/hooks/useScrollReveal';
 
@@ -16,7 +16,8 @@ export default function ContactPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await createInquiry({
+      console.log('[Contact Form] Submitting inquiry:', form);
+      await inquiriesApi.create({
         name: form.name,
         phone: form.phone,
         email: form.email,
@@ -25,10 +26,12 @@ export default function ContactPage() {
         budget: null,
         source_page: 'contact',
       });
+      console.log('[Contact Form] Inquiry submitted successfully');
       setSubmitted(true);
       setForm({ name: '', email: '', phone: '', inquiryType: INQUIRY_TYPES[0], message: '' });
       setTimeout(() => setSubmitted(false), 5000);
-    } catch {
+    } catch (err) {
+      console.error('[Contact Form] Error submitting inquiry:', err);
       setError(true);
       setTimeout(() => setError(false), 5000);
     }

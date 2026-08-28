@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Plus, Pencil, Trash2, X } from 'lucide-react';
-import { fetchAllTestimonials, createTestimonial, updateTestimonial, deleteTestimonial } from '@/lib/services';
+import { testimonialsApi } from '@/lib/api';
 import type { Testimonial } from '@/types';
 
 export default function AdminTestimonials() {
@@ -9,31 +9,28 @@ export default function AdminTestimonials() {
   const [editing, setEditing] = useState<Testimonial | null>(null);
   const [form, setForm] = useState({ quote: '', author: '', role: '', image: '', published: true });
 
-  const load = () => fetchAllTestimonials().then((d) => setItems(d)).catch(() => {});
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    testimonialsApi.getAll().then((data: any) => setItems(data)).catch(() => {});
+  }, []);
 
   const openNew = () => { setForm({ quote: '', author: '', role: '', image: '', published: true }); setEditing(null); setShowForm(true); };
   const openEdit = (t: Testimonial) => { setForm({ quote: t.quote, author: t.author, role: t.role || '', image: t.image || '', published: t.published }); setEditing(t); setShowForm(true); };
 
-  const save = async () => {
-    const payload = { quote: form.quote, author: form.author, role: form.role || null, image: form.image || null, published: form.published };
-    try {
-      if (editing) await updateTestimonial(editing.id, payload);
-      else await createTestimonial(payload);
-      setShowForm(false); load();
-    } catch (error) {
-      console.error('Error saving testimonial:', error);
+  const handleSave = async () => {
+    if (editing) {
+      await testimonialsApi.update(editing.id, form);
+    } else {
+      await testimonialsApi.create(form as Omit<Testimonial, 'id' | 'created_at'>);
     }
+    setShowForm(false);
+    testimonialsApi.getAll().then((data: any) => setItems(data)).catch(() => {});
   };
-  const remove = async (t: Testimonial) => { 
-    if (confirm('Delete this testimonial?')) { 
-      try {
-        await deleteTestimonial(t.id); 
-        load(); 
-      } catch (error) {
-        console.error('Error deleting testimonial:', error);
-      }
-    } 
+
+  const handleDelete = async (id: string) => {
+    if (confirm('Delete this testimonial?')) {
+      await testimonialsApi.delete(id);
+      testimonialsApi.getAll().then((data: any) => setItems(data)).catch(() => {});
+    }
   };
 
   return (
@@ -45,7 +42,7 @@ export default function AdminTestimonials() {
             <p className="text-sm text-stone-600 italic">"{t.quote}"</p>
             <div className="mt-3 flex items-center justify-between">
               <div className="flex items-center gap-3">{t.image && <img src={t.image} alt="" className="w-10 h-10 rounded-full object-cover" />}<div><p className="font-medium text-stone-900 text-sm">{t.author}</p>{t.role && <p className="text-xs text-stone-500">{t.role}</p>}</div></div>
-              <div className="flex items-center gap-1"><button onClick={() => openEdit(t)} className="p-2 text-stone-500 hover:text-gold"><Pencil className="w-4 h-4" /></button><button onClick={() => remove(t)} className="p-2 text-stone-400 hover:text-red-500"><Trash2 className="w-4 h-4" /></button></div>
+              <div className="flex items-center gap-1"><button onClick={() => openEdit(t)} className="p-2 text-stone-500 hover:text-gold"><Pencil className="w-4 h-4" /></button><button onClick={() => handleDelete(t.id)} className="p-2 text-stone-400 hover:text-red-500"><Trash2 className="w-4 h-4" /></button></div>
             </div>
           </div>
         ))}
@@ -65,7 +62,7 @@ export default function AdminTestimonials() {
               <div><label className="block text-xs text-stone-500 mb-1.5">Image URL</label><input value={form.image} onChange={(e) => setForm({ ...form, image: e.target.value })} className="w-full px-4 py-2.5 text-sm border border-stone-200 rounded-lg focus:border-gold outline-none" /></div>
               <label className="flex items-center gap-2 text-sm text-stone-700"><input type="checkbox" checked={form.published} onChange={(e) => setForm({ ...form, published: e.target.checked })} /> Published</label>
             </div>
-            <div className="p-6 border-t border-stone-100 flex justify-end gap-3"><button onClick={() => setShowForm(false)} className="px-5 py-2.5 text-sm border border-stone-200 rounded-lg">Cancel</button><button onClick={save} className="px-5 py-2.5 text-sm font-medium text-stone-900 bg-gold rounded-lg">Save</button></div>
+            <div className="p-6 border-t border-stone-100 flex justify-end gap-3"><button onClick={() => setShowForm(false)} className="px-5 py-2.5 text-sm border border-stone-200 rounded-lg">Cancel</button><button onClick={handleSave} className="px-5 py-2.5 text-sm font-medium text-stone-900 bg-gold rounded-lg">Save</button></div>
           </div>
         </div>
       )}

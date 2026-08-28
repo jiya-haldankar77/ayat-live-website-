@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
-import { fetchSettings } from '@/lib/services';
+import { settingsApi } from '@/lib/api';
 
 type Settings = Record<string, string>;
 const SettingsContext = createContext<Settings | undefined>(undefined);
@@ -22,9 +22,9 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     // Try to fetch settings, but don't block rendering
-    fetchSettings()
+    settingsApi.getAll()
       .then((s) => setSettings({ ...DEFAULTS, ...s }))
-      .catch((err) => console.error('Failed to fetch settings:', err));
+      .catch((err: any) => console.error('Failed to fetch settings:', err));
   }, []);
 
   return <SettingsContext.Provider value={settings}>{children}</SettingsContext.Provider>;

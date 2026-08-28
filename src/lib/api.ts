@@ -56,18 +56,18 @@ export const propertiesApi = {
 
 // Bookings API
 export const bookingsApi = {
-  getAll: (): Promise<any[]> => apiCall('/api/forms/bookings'),
-  create: (data: any): Promise<any> => apiCall('/api/forms/bookings', { method: 'POST', body: JSON.stringify(data) }),
-  update: (id: string, data: any): Promise<any> => apiCall(`/api/forms/bookings/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
-  delete: (id: string): Promise<any> => apiCall(`/api/forms/bookings/${id}`, { method: 'DELETE' }),
+  getAll: (): Promise<any[]> => apiCall('/api/bookings'),
+  create: (data: any): Promise<any> => apiCall('/api/bookings', { method: 'POST', body: JSON.stringify(data) }),
+  update: (id: string, data: any): Promise<any> => apiCall(`/api/bookings/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  delete: (id: string): Promise<any> => apiCall(`/api/bookings/${id}`, { method: 'DELETE' }),
 };
 
 // Inquiries API
 export const inquiriesApi = {
-  getAll: (): Promise<any[]> => apiCall('/api/forms/inquiries'),
-  create: (data: any): Promise<any> => apiCall('/api/forms/inquiries', { method: 'POST', body: JSON.stringify(data) }),
-  update: (id: string, data: any): Promise<any> => apiCall(`/api/forms/inquiries/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
-  delete: (id: string): Promise<any> => apiCall(`/api/forms/inquiries/${id}`, { method: 'DELETE' }),
+  getAll: (): Promise<any[]> => apiCall('/api/inquiries'),
+  create: (data: any): Promise<any> => apiCall('/api/inquiries', { method: 'POST', body: JSON.stringify(data) }),
+  update: (id: string, data: any): Promise<any> => apiCall(`/api/inquiries/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  delete: (id: string): Promise<any> => apiCall(`/api/inquiries/${id}`, { method: 'DELETE' }),
 };
 
 // Testimonials API
@@ -99,8 +99,8 @@ export const teamApi = {
 
 // Settings API
 export const settingsApi = {
-  getAll: (): Promise<any> => apiCall('/api/config/settings'),
-  update: (key: string, value: string): Promise<any> => apiCall('/api/config/settings', { method: 'PUT', body: JSON.stringify({ key, value }) }),
+  getAll: (): Promise<any> => apiCall('/api/settings'),
+  update: (key: string, value: string): Promise<any> => apiCall('/api/settings', { method: 'PUT', body: JSON.stringify({ key, value }) }),
 };
 
 // Dashboard API
@@ -110,9 +110,9 @@ export const dashboardApi = {
 
 // Categories & Amenities API
 export const categoriesApi = {
-  getAll: (): Promise<any[]> => apiCall('/api/config/categories'),
+  getAll: (): Promise<any[]> => apiCall('/api/categories'),
 };
 
 export const amenitiesApi = {
-  getAll: (): Promise<any[]> => apiCall('/api/config/amenities'),
+  getAll: (): Promise<any[]> => apiCall('/api/amenities'),
 };

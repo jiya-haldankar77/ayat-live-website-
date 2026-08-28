@@ -22,33 +22,51 @@ export default async function handler(req, res) {
           try {
             resolve(data ? JSON.parse(data) : {});
           } catch (e) {
+            console.error('JSON parse error:', e);
             resolve({});
           }
         });
         req.on('error', reject);
       });
       req.body = body;
+      console.log('[API] Parsed body:', JSON.stringify(body));
     } catch (error) {
-      console.error('Error parsing request body:', error);
+      console.error('[API] Error parsing request body:', error);
     }
   }
 
-  await connectDB();
+  try {
+    await connectDB();
+    console.log('[API] MongoDB connected');
+  } catch (error) {
+    console.error('[API] MongoDB connection error:', error);
+    return res.status(500).json({ error: 'Database connection failed' });
+  }
 
   const { pathname } = new URL(req.url, `http://${req.headers.host}`);
+  console.log('[API] Request:', req.method, pathname);
 
   // ========== AUTH ROUTES ==========
   // POST /api/auth/login
   if (req.method === 'POST' && pathname.endsWith('/auth/login')) {
     try {
+      console.log('[API] Login attempt for email:', req.body?.email);
       const { email, password } = req.body;
+      if (!email || !password) {
+        console.log('[API] Missing email or password');
+        return res.status(400).json({ error: 'Email and password required' });
+      }
       const admin = await Admin.findOne({ email });
+      console.log('[API] Admin found:', !!admin);
       if (!admin || !(await bcrypt.compare(password, admin.password))) {
+        console.log('[API] Invalid credentials');
         return res.status(401).json({ error: 'Invalid credentials' });
       }
       const token = jwt.sign({ id: admin._id }, JWT_SECRET, { expiresIn: '7d' });
+      console.log('[API] Login successful');
       return res.json({ token, admin: { id: admin._id, email: admin.email, role: admin.role } });
     } catch (error) {
+      console.error('[API] Login error:', error);
       return res.status(500).json({ error: 'Login failed' });
     }
   }
@@ -207,9 +225,12 @@ export default async function handler(req, res) {
   // POST /api/inquiries
   if (req.method === 'POST' && pathname === '/api/inquiries') {
     try {
+      console.log('[API] Creating inquiry:', JSON.stringify(req.body));
       const inquiry = await Inquiry.create(req.body);
+      console.log('[API] Inquiry created successfully');
       return res.json(inquiry);
     } catch (error) {
+      console.error('[API] Inquiry creation error:', error);
       return res.status(500).json({ error: 'Failed to create inquiry' });
     }
   }

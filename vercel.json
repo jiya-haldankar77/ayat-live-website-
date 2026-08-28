@@ -12,9 +12,7 @@
     { "source": "/api/faqs/(.*)", "destination": "/api/faqs/[...path]" },
     { "source": "/api/team/(.*)", "destination": "/api/team/[...path]" },
     { "source": "/api/dashboard/(.*)", "destination": "/api/dashboard/[...path]" },
-    { "source": "/api/settings", "destination": "/api/settings" },
-    { "source": "/api/categories", "destination": "/api/categories" },
-    { "source": "/api/amenities", "destination": "/api/amenities" },
+    { "source": "/api/config/(.*)", "destination": "/api/config" },
     { "source": "/((?!api/).*)", "destination": "/index.html" }
   ]
 }

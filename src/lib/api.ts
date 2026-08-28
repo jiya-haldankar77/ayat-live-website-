@@ -99,8 +99,8 @@ export const teamApi = {
 
 // Settings API
 export const settingsApi = {
-  getAll: (): Promise<any> => apiCall('/api/settings'),
-  update: (key: string, value: string): Promise<any> => apiCall('/api/settings', { method: 'PUT', body: JSON.stringify({ key, value }) }),
+  getAll: (): Promise<any> => apiCall('/api/config/settings'),
+  update: (key: string, value: string): Promise<any> => apiCall('/api/config/settings', { method: 'PUT', body: JSON.stringify({ key, value }) }),
 };
 
 // Dashboard API
@@ -110,9 +110,9 @@ export const dashboardApi = {
 
 // Categories & Amenities API
 export const categoriesApi = {
-  getAll: (): Promise<any[]> => apiCall('/api/categories'),
+  getAll: (): Promise<any[]> => apiCall('/api/config/categories'),
 };
 
 export const amenitiesApi = {
-  getAll: (): Promise<any[]> => apiCall('/api/amenities'),
+  getAll: (): Promise<any[]> => apiCall('/api/config/amenities'),
 };

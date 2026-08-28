@@ -1,7 +1,7 @@
-import connectDB from '../lib/db.js';
-import { Settings } from '../lib/models.js';
-import { verifyAuth } from '../lib/auth.js';
-import { logActivity } from '../lib/activity.js';
+import connectDB from './lib/db.js';
+import { Settings, Category, Amenity } from './lib/models.js';
+import { verifyAuth } from './lib/auth.js';
+import { logActivity } from './lib/activity.js';
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -11,8 +11,10 @@ export default async function handler(req, res) {
 
   await connectDB();
 
-  // GET /api/settings
-  if (req.method === 'GET') {
+  const { pathname } = new URL(req.url, `http://${req.headers.host}`);
+
+  // GET /api/config/settings
+  if (req.method === 'GET' && pathname.endsWith('/settings')) {
     try {
       const settings = await Settings.find({});
       const settingsObj = {};
@@ -23,8 +25,8 @@ export default async function handler(req, res) {
     }
   }
 
-  // PUT /api/settings
-  if (req.method === 'PUT') {
+  // PUT /api/config/settings
+  if (req.method === 'PUT' && pathname.endsWith('/settings')) {
     const admin = await verifyAuth(req);
     if (!admin) return res.status(401).json({ error: 'No token provided' });
     try {
@@ -34,6 +36,26 @@ export default async function handler(req, res) {
       return res.json({ message: 'Setting updated' });
     } catch (error) {
       return res.status(500).json({ error: 'Failed to update setting' });
+    }
+  }
+
+  // GET /api/config/categories
+  if (req.method === 'GET' && pathname.endsWith('/categories')) {
+    try {
+      const categories = await Category.find();
+      return res.json(categories);
+    } catch (error) {
+      return res.status(500).json({ error: 'Failed to fetch categories' });
+    }
+  }
+
+  // GET /api/config/amenities
+  if (req.method === 'GET' && pathname.endsWith('/amenities')) {
+    try {
+      const amenities = await Amenity.find();
+      return res.json(amenities);
+    } catch (error) {
+      return res.status(500).json({ error: 'Failed to fetch amenities' });
     }
   }
 
